@@ -20,81 +20,87 @@ package daphne_package is
     constant TESTREG_ADDR:  std_logic_vector(31 downto 0) := X"12345678";
     constant FIFO_ADDR:     std_logic_vector(31 downto 0) := X"80000000";
 
-    type array45x14_type is array (44 downto 0) of std_logic_vector(13 downto 0);
-    type array45x16_type is array (44 downto 0) of std_logic_vector(15 downto 0);
-    type array45x5_type  is array (44 downto 0) of std_logic_vector(4 downto 0);
-    type array8x14_type  is array ( 7 downto 0) of std_logic_vector(13 downto 0);
-    type array5x8x14_type is array (4 downto 0) of array8x14_type;
+    type array_5x8_type    is array (4 downto 0) of std_logic_vector(7 downto 0);
+    type array_8x16_type   is array (7 downto 0) of std_logic_vector(15 downto 0);
+    type array_5x8x16_type is array (4 downto 0) of array_8x16_type;
 
-    -- DAPHNE specific addresses
+    -- ****************** DAPHNE specific addresses
 
     -- write anything to force trigger
 
     constant TRIGGER_ADDR:      std_logic_vector(31 downto 0) := X"00002000";
 
-    -- address to force reset of the AFE front end logic
 
-    constant RESETFE_ADDR:    std_logic_vector(31 downto 0) := X"00002001";
+    -- write anything to force reset of AFE front end logic
 
-    -- 45 addresses write anything to this address to bitslip AFE channel 0x3000 - 0x302C
+    constant RESET_AFE_ADDR:     std_logic_vector(31 downto 0) := X"00002001";
 
-    constant BITSLIP_BASEADDR:  std_logic_vector(31 downto 0) := X"00003000";
+    -- Write anything to this address to force bitslip of all channels on the AFE, W/O
 
-    -- 45 addresses, 5 bit delay values 0x4000-0x402C
+    constant BITSLIP_AFE0_ADDR:  std_logic_vector(31 downto 0) := X"00003000";
+    constant BITSLIP_AFE1_ADDR:  std_logic_vector(31 downto 0) := X"00003001";
+    constant BITSLIP_AFE2_ADDR:  std_logic_vector(31 downto 0) := X"00003002";
+    constant BITSLIP_AFE3_ADDR:  std_logic_vector(31 downto 0) := X"00003003";
+    constant BITSLIP_AFE4_ADDR:  std_logic_vector(31 downto 0) := X"00003004";
 
-    constant DELAY_BASEADDR:    std_logic_vector(31 downto 0) := X"00004000";
+    -- write idelay value (range 0-31) to all channels of the AFE
 
-    -- 45 spy buffers align on 64k boundaries (0x0000-0x3FFF)
+    constant DELAY_AFE0_ADDR:    std_logic_vector(31 downto 0) := X"00004000";
+    constant DELAY_AFE1_ADDR:    std_logic_vector(31 downto 0) := X"00004001";
+    constant DELAY_AFE2_ADDR:    std_logic_vector(31 downto 0) := X"00004002";
+    constant DELAY_AFE3_ADDR:    std_logic_vector(31 downto 0) := X"00004003";
+    constant DELAY_AFE4_ADDR:    std_logic_vector(31 downto 0) := X"00004004";
 
-    constant SPYBUF00_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000000----------------";
-    constant SPYBUF01_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000001----------------";
-    constant SPYBUF02_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000010----------------";
-    constant SPYBUF03_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000011----------------";
-    constant SPYBUF04_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000100----------------";
-    constant SPYBUF05_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000101----------------";
-    constant SPYBUF06_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000110----------------";
-    constant SPYBUF07_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000111----------------";
-    constant SPYBUF08_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001000----------------";
-    constant SPYBUF09_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001001----------------";
-    constant SPYBUF10_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001010----------------";
-    constant SPYBUF11_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001011----------------";
-    constant SPYBUF12_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001100----------------";
-    constant SPYBUF13_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001101----------------";
-    constant SPYBUF14_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001110----------------";
-    constant SPYBUF15_BASEADDR: std_logic_vector(31 downto 0) := "0100000000001111----------------";
-    constant SPYBUF16_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010000----------------";
-    constant SPYBUF17_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010001----------------";
-    constant SPYBUF18_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010010----------------";
-    constant SPYBUF19_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010011----------------";
-    constant SPYBUF20_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010100----------------";
-    constant SPYBUF21_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010101----------------";
-    constant SPYBUF22_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010110----------------";
-    constant SPYBUF23_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010111----------------";
-    constant SPYBUF24_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011000----------------";
-    constant SPYBUF25_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011001----------------";
-    constant SPYBUF26_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011010----------------";
-    constant SPYBUF27_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011011----------------";
-    constant SPYBUF28_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011100----------------";
-    constant SPYBUF29_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011101----------------";
-    constant SPYBUF30_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011110----------------";
-    constant SPYBUF31_BASEADDR: std_logic_vector(31 downto 0) := "0100000000011111----------------";
-    constant SPYBUF32_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100000----------------";
-    constant SPYBUF33_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100001----------------";
-    constant SPYBUF34_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100010----------------";
-    constant SPYBUF35_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100011----------------";
-    constant SPYBUF36_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100100----------------";
-    constant SPYBUF37_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100101----------------";
-    constant SPYBUF38_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100110----------------";
-    constant SPYBUF39_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100111----------------";
-    constant SPYBUF40_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101000----------------";
-    constant SPYBUF41_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101001----------------";
-    constant SPYBUF42_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101010----------------";
-    constant SPYBUF43_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101011----------------";
-    constant SPYBUF44_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101100----------------";
+    -- spy buffers align on 64k boundaries
+
+    constant SPYBUF_AFE0_D0_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000000----------------";
+    constant SPYBUF_AFE0_D1_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000001----------------";
+    constant SPYBUF_AFE0_D2_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000010----------------";
+    constant SPYBUF_AFE0_D3_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000011----------------";
+    constant SPYBUF_AFE0_D4_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000100----------------";
+    constant SPYBUF_AFE0_D5_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000101----------------";
+    constant SPYBUF_AFE0_D6_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000110----------------";
+    constant SPYBUF_AFE0_D7_BASEADDR: std_logic_vector(31 downto 0) := "0100000000000111----------------";
+
+    constant SPYBUF_AFE1_D0_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010000----------------";
+    constant SPYBUF_AFE1_D1_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010001----------------";
+    constant SPYBUF_AFE1_D2_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010010----------------";
+    constant SPYBUF_AFE1_D3_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010011----------------";
+    constant SPYBUF_AFE1_D4_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010100----------------";
+    constant SPYBUF_AFE1_D5_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010101----------------";
+    constant SPYBUF_AFE1_D6_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010110----------------";
+    constant SPYBUF_AFE1_D7_BASEADDR: std_logic_vector(31 downto 0) := "0100000000010111----------------";
+
+    constant SPYBUF_AFE2_D0_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100000----------------";
+    constant SPYBUF_AFE2_D1_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100001----------------";
+    constant SPYBUF_AFE2_D2_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100010----------------";
+    constant SPYBUF_AFE2_D3_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100011----------------";
+    constant SPYBUF_AFE2_D4_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100100----------------";
+    constant SPYBUF_AFE2_D5_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100101----------------";
+    constant SPYBUF_AFE2_D6_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100110----------------";
+    constant SPYBUF_AFE2_D7_BASEADDR: std_logic_vector(31 downto 0) := "0100000000100111----------------";
+
+    constant SPYBUF_AFE3_D0_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110000----------------";
+    constant SPYBUF_AFE3_D1_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110001----------------";
+    constant SPYBUF_AFE3_D2_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110010----------------";
+    constant SPYBUF_AFE3_D3_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110011----------------";
+    constant SPYBUF_AFE3_D4_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110100----------------";
+    constant SPYBUF_AFE3_D5_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110101----------------";
+    constant SPYBUF_AFE3_D6_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110110----------------";
+    constant SPYBUF_AFE3_D7_BASEADDR: std_logic_vector(31 downto 0) := "0100000000110111----------------";
+
+    constant SPYBUF_AFE4_D0_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000000----------------";
+    constant SPYBUF_AFE4_D1_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000001----------------";
+    constant SPYBUF_AFE4_D2_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000010----------------";
+    constant SPYBUF_AFE4_D3_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000011----------------";
+    constant SPYBUF_AFE4_D4_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000100----------------";
+    constant SPYBUF_AFE4_D5_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000101----------------";
+    constant SPYBUF_AFE4_D6_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000110----------------";
+    constant SPYBUF_AFE4_D7_BASEADDR: std_logic_vector(31 downto 0) := "0100000001000111----------------";
 
     -- spy buffer for the 64 bit timestamp value
 
-    constant SPYBUFTS_BASEADDR: std_logic_vector(31 downto 0) := "0100000000101101----------------";
+    constant SPYBUFTS_BASEADDR: std_logic_vector(31 downto 0) := "0100000001010000----------------";
 
 end package;
 
