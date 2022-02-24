@@ -1,8 +1,9 @@
 -- top_level.vhd
 -- for DAPHNE GbE AFE Readout
--- Target: XC7A200T-3FBG676C
--- Uses single GTX Transceiver connected to SFP optical module
--- Line rate is 1.25Gbps with refclk 125MHz
+-- Target: XC7A200T-2FBG676C
+-- Install SFP Gigabit Ethernet module in position SFP1 on DAPHNE
+-- MGTREFCLK = 125MHz
+-- DAPHNE Master clock = 100MHz
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -26,58 +27,10 @@ port(
 
     -- AFE LVDS i/o
 
-    AFE0_D0_P, AFE0_D0_N: in std_logic;
-    AFE0_D1_P, AFE0_D1_N: in std_logic;
-    AFE0_D2_P, AFE0_D2_N: in std_logic;
-    AFE0_D3_P, AFE0_D3_N: in std_logic;
-    AFE0_D4_P, AFE0_D4_N: in std_logic;
-    AFE0_D5_P, AFE0_D5_N: in std_logic;
-    AFE0_D6_P, AFE0_D6_N: in std_logic;
-    AFE0_D7_P, AFE0_D7_N: in std_logic;
-    AFE0_FR_P, AFE0_FR_N: in std_logic;
-
-    AFE1_D0_P, AFE1_D0_N: in std_logic;
-    AFE1_D1_P, AFE1_D1_N: in std_logic;
-    AFE1_D2_P, AFE1_D2_N: in std_logic;
-    AFE1_D3_P, AFE1_D3_N: in std_logic;
-    AFE1_D4_P, AFE1_D4_N: in std_logic;
-    AFE1_D5_P, AFE1_D5_N: in std_logic;
-    AFE1_D6_P, AFE1_D6_N: in std_logic;
-    AFE1_D7_P, AFE1_D7_N: in std_logic;
-    AFE1_FR_P, AFE1_FR_N: in std_logic;
-
-    AFE2_D0_P, AFE2_D0_N: in std_logic;
-    AFE2_D1_P, AFE2_D1_N: in std_logic;
-    AFE2_D2_P, AFE2_D2_N: in std_logic;
-    AFE2_D3_P, AFE2_D3_N: in std_logic;
-    AFE2_D4_P, AFE2_D4_N: in std_logic;
-    AFE2_D5_P, AFE2_D5_N: in std_logic;
-    AFE2_D6_P, AFE2_D6_N: in std_logic;
-    AFE2_D7_P, AFE2_D7_N: in std_logic;
-    AFE2_FR_P, AFE2_FR_N: in std_logic;
-
-    AFE3_D0_P, AFE3_D0_N: in std_logic;
-    AFE3_D1_P, AFE3_D1_N: in std_logic;
-    AFE3_D2_P, AFE3_D2_N: in std_logic;
-    AFE3_D3_P, AFE3_D3_N: in std_logic;
-    AFE3_D4_P, AFE3_D4_N: in std_logic;
-    AFE3_D5_P, AFE3_D5_N: in std_logic;
-    AFE3_D6_P, AFE3_D6_N: in std_logic;
-    AFE3_D7_P, AFE3_D7_N: in std_logic;
-    AFE3_FR_P, AFE3_FR_N: in std_logic;
-
-    AFE4_D0_P, AFE4_D0_N: in std_logic;
-    AFE4_D1_P, AFE4_D1_N: in std_logic;
-    AFE4_D2_P, AFE4_D2_N: in std_logic;
-    AFE4_D3_P, AFE4_D3_N: in std_logic;
-    AFE4_D4_P, AFE4_D4_N: in std_logic;
-    AFE4_D5_P, AFE4_D5_N: in std_logic;
-    AFE4_D6_P, AFE4_D6_N: in std_logic;
-    AFE4_D7_P, AFE4_D7_N: in std_logic;
-    AFE4_FR_P, AFE4_FR_N: in std_logic;
-
-    afe_clk_p:  out std_logic; -- copy of 62.5MHz master clock sent to AFEs
-    afe_clk_n:  out std_logic;
+    afe_dclk_p, afe_dclk_n: in std_logic_vector(4 downto 0); 
+    afe_fclk_p, afe_fclk_n: in std_logic_vector(4 downto 0);
+    afe_data_p, afe_data_n: in array_5x8_type;  -- afe_data[afe 4..0][bit 7..0]
+    afe_clk_p, afe_clk_n: out std_logic; -- copy of 62.5MHz master clock sent to AFEs
 
     -- Gigabit Ethernet i/o
 
@@ -186,22 +139,22 @@ architecture top_level_arch of top_level is
 
     component fe
     port(
-        afe_p: in std_logic_vector(44 downto 0);
-        afe_n: in std_logic_vector(44 downto 0);
-        afe_clk_p:  out std_logic; -- copy of 62.5MHz master clock sent to AFEs
-        afe_clk_n:  out std_logic;
+        dclk_p, dclk_n: in std_logic_vector(4 downto 0);
+        fclk_p, fclk_n: in std_logic_vector(4 downto 0);
+        data_p, data_n: in array_5x8_type;
+        afe_clk_p, afe_clk_n: out std_logic; -- 62.5MHz ref clk out to AFEs
+    
         mclk:   in std_logic; -- master clock 62.5MHz
-        fclk:   in std_logic; -- 7 x master clock = 437.5MHz
-        fclkb:  in std_logic;
         sclk:   in std_logic; -- 200MHz system clock, constant, 
-        reset:  in std_logic;  
-        delay_clk: in std_logic;
-        delay_din: in std_logic_vector(4 downto 0);
-        delay_ld:  in std_logic_vector(44 downto 0);
-        delay_dout: out array45x5_type;
-        delay_rdy:  out std_logic;
-        bitslip: in std_logic_vector(44 downto 0);
-        afe: out array45x14_type
+        reset:  in std_logic; -- async reset the front end logic (must do this before use!)
+    
+        delay_clk: in std_logic; -- clock for writing iserdes delay value
+        delay_ld:  in std_logic_vector(4 downto 0); -- write delay value strobe
+        delay_din: in std_logic_vector(4 downto 0); -- delay value to write range 0-31
+    
+        bitslip:  in  std_logic_vector(4 downto 0);
+        fclk_out: out std_logic_vector(4 downto 0);
+        dout:     out array_5x8x16_type
       );
     end component;
 
@@ -247,35 +200,29 @@ architecture top_level_arch of top_level is
 
     -- DAPHNE specific signals...
 
-	signal reset_async, reset_sync: std_logic;
-    signal trig_sync, trig_gbe: std_logic;
+	signal reset_async: std_logic;
+    signal reset_mclk:  std_logic;
+    signal fe_reset:    std_logic;
 
-    signal afe_p, afe_n: std_logic_vector(44 downto 0);
+    signal sysclk_ibuf, clkfbout, clkfbout_buf, clkout0, clkout1, locked: std_logic;
+    signal sclk, mclk: std_logic;
+    signal fclk: std_logic_vector(4 downto 0);
 
-    signal sysclk_ibuf, clkfbout, clkfbout_buf, clkout0, clkout1, clkout2, clkout2b, locked: std_logic;
-    signal sclk, mclk, fclk, fclkb: std_logic;
+    signal timestamp_reg, ts_spy_bufr: std_logic_vector(63 downto 0);
 
-    signal afe_bus: array45x14_type;
-    signal afe16_bus: array45x16_type;
-    signal bitslip: std_logic_vector(44 downto 0);
-    signal bitslip_strobe: std_logic;
-    signal delay_ld: std_logic_vector(44 downto 0);
-    signal spyout: array45x16_type;
-    
-    signal timestamp_reg, timestamp_spy_out: std_logic_vector(63 downto 0);
+    signal trig_gbe: std_logic;
+    signal trig_oei0_reg, trig_oei1_reg, trig_oei2_reg: std_logic;
+    signal trig_fclk: std_logic_vector(4 downto 0);
+    signal trig_mclk: std_logic;
 
-    signal trig_gbe0_reg, trig_gbe1_reg, trig_gbe2_reg: std_logic;
+    signal bitslip_tmp, bitslip3_oei_reg, bitslip2_oei_reg, bitslip1_oei_reg, bitslip0_oei_reg: std_logic_vector(4 downto 0);
+    signal bitslip0_fclk_reg, bitslip1_fclk_reg, bitslip_fclk: std_logic_vector(4 downto 0);
 
-    signal bitslip_tmp, bitslip3_oei_reg, bitslip2_oei_reg, bitslip1_oei_reg, bitslip0_oei_reg: std_logic_vector(44 downto 0);
-    signal bitslip0_mclk_reg, bitslip1_mclk_reg, bitslip_mclk: std_logic_vector(44 downto 0);  
+    signal delay_ld: std_logic_vector(4 downto 0);
 
-    signal delay_dout: array45x5_type;
-    signal fe_reset: std_logic;
-    signal delay_rdy: std_logic;
+    signal afe_dout, spy_bufr: array_5x8x16_type;
 
 begin
-
-	reset_async <= not reset_n;
 
 	-- sysclk is 100MHz LVDS, receive it with IBUFDS and drive it out on a BUFG net. sysclk comes in on bank 33
 	-- which has VCCO=1.5V. IOSTANDARD is LVDS and the termination resistor is external (DIFF_TERM=FALSE)
@@ -318,8 +265,8 @@ begin
         CLKOUT0B            => open,
         CLKOUT1             => clkout1,  -- 62.5MHz
         CLKOUT1B            => open,
-        CLKOUT2             => clkout2,  -- 437.5MHz
-        CLKOUT2B            => clkout2b, -- 437.5MHz inverted 
+        CLKOUT2             => open,  -- 437.5MHz
+        CLKOUT2B            => open,  -- 437.5MHz inverted 
         CLKOUT3             => open,
         CLKOUT3B            => open,
         CLKOUT4             => open,
@@ -353,18 +300,16 @@ begin
 
     clk1_inst:  BUFG port map( I => clkout1, O => mclk);   -- master clock 62.5MHz
 
-    clk2_inst:  BUFG port map( I => clkout2, O => fclk);   -- fast clock 437.5MHz
-
-    clk2b_inst: BUFG port map( I => clkout2b, O => fclkb); -- fast clock 437.5MHz inverted
-    
     -- square up some async inputs in the mclk domain
     -- also make a fake 64 bit timestamp counter
+
+	reset_async <= not reset_n;
 
     misc_proc: process(mclk)
     begin
         if rising_edge(mclk) then
-            reset_sync <= reset_async;
-            if (reset_sync='1') then
+            reset_mclk <= reset_async;
+            if (reset_mclk='1') then
                 timestamp_reg <= (others=>'0');
             else
                 timestamp_reg <= std_logic_vector(unsigned(timestamp_reg) + 1);
@@ -373,105 +318,67 @@ begin
     end process misc_proc;
 
     -- the trigger pulse can come from the outside world (aysnc) or from a write to a special address (oeiclk domain). 
-    -- square this up and edge detect this and move it into the MCLK domain
+    -- register in oei clk domain and pulse stretch, then sample in each fclk domain
 
     trig_gbe <= '1' when (std_match(rx_addr,TRIGGER_ADDR) and rx_wren='1') else '0';
 
     trig_oei_proc: process(oeiclk)
     begin
         if rising_edge(oeiclk) then
-            trig_gbe0_reg <= trig_gbe;
-            trig_gbe1_reg <= trig_gbe0_reg;
-            trig_gbe2_reg <= trig_gbe1_reg;
+            trig_oei0_reg <= trig_gbe or trig_ext;  -- trigger source from Ethernet write or external
+            trig_oei1_reg <= trig_oei0_reg;
+            trig_oei2_reg <= trig_oei1_reg;
         end if;
     end process trig_oei_proc;
 
-    trig_proc: process(mclk)
+    -- register trig pulse in each fclk domain
+
+    trig_fclk_gen: for i in 4 downto 0 generate
+
+        trig_fclk_proc: process( fclk(i) )
+        begin
+            if rising_edge( fclk(i) ) then
+                trig_fclk(i) <= trig_oei0_reg or trig_oei1_reg or trig_oei2_reg; 
+            end if;
+        end process trig_fclk_proc;
+
+    end generate trig_fclk_gen;
+
+    -- register trig pulse in mclk domain
+
+    trig_mclk_proc: process( mclk )
     begin
-        if rising_edge(mclk) then
-            trig_sync <= trig_ext or trig_gbe0_reg or trig_gbe1_reg or trig_gbe2_reg; 
+        if rising_edge( mclk ) then
+            trig_mclk <= trig_oei0_reg or trig_oei1_reg or trig_oei2_reg; 
         end if;
-    end process trig_proc;
+    end process trig_mclk_proc;
 
-    -- Map the LVDS inputs into (44..0) arrays. this sets the order for the whole design, spy buffers, etc.
+    -- write anything to address RESET_AFE_ADDR to generate a special reset pulse for the FE logic
+    -- IMPORTANT! Do this before triggering and reading data!
 
-    afe_p(0) <= AFE0_D0_P;  afe_n(0) <= AFE0_D0_N;
-    afe_p(1) <= AFE0_D1_P;  afe_n(1) <= AFE0_D1_N;
-    afe_p(2) <= AFE0_D2_P;  afe_n(2) <= AFE0_D2_N;
-    afe_p(3) <= AFE0_D3_P;  afe_n(3) <= AFE0_D3_N;
-    afe_p(4) <= AFE0_D4_P;  afe_n(4) <= AFE0_D4_N;
-    afe_p(5) <= AFE0_D5_P;  afe_n(5) <= AFE0_D5_N;
-    afe_p(6) <= AFE0_D6_P;  afe_n(6) <= AFE0_D6_N;
-    afe_p(7) <= AFE0_D7_P;  afe_n(7) <= AFE0_D7_N;
-    afe_p(8) <= AFE0_FR_P;  afe_n(8) <= AFE0_FR_N;
-
-    afe_p( 9) <= AFE1_D0_P;  afe_n( 9) <= AFE1_D0_N;
-    afe_p(10) <= AFE1_D1_P;  afe_n(10) <= AFE1_D1_N;
-    afe_p(11) <= AFE1_D2_P;  afe_n(11) <= AFE1_D2_N;
-    afe_p(12) <= AFE1_D3_P;  afe_n(12) <= AFE1_D3_N;
-    afe_p(13) <= AFE1_D4_P;  afe_n(13) <= AFE1_D4_N;
-    afe_p(14) <= AFE1_D5_P;  afe_n(14) <= AFE1_D5_N;
-    afe_p(15) <= AFE1_D6_P;  afe_n(15) <= AFE1_D6_N;
-    afe_p(16) <= AFE1_D7_P;  afe_n(16) <= AFE1_D7_N;
-    afe_p(17) <= AFE1_FR_P;  afe_n(17) <= AFE1_FR_N;
-
-    afe_p(18) <= AFE2_D0_P;  afe_n(18) <= AFE2_D0_N;
-    afe_p(19) <= AFE2_D1_P;  afe_n(19) <= AFE2_D1_N;
-    afe_p(20) <= AFE2_D2_P;  afe_n(20) <= AFE2_D2_N;
-    afe_p(21) <= AFE2_D3_P;  afe_n(21) <= AFE2_D3_N;
-    afe_p(22) <= AFE2_D4_P;  afe_n(22) <= AFE2_D4_N;
-    afe_p(23) <= AFE2_D5_P;  afe_n(23) <= AFE2_D5_N;
-    afe_p(24) <= AFE2_D6_P;  afe_n(24) <= AFE2_D6_N;
-    afe_p(25) <= AFE2_D7_P;  afe_n(25) <= AFE2_D7_N;
-    afe_p(26) <= AFE2_FR_P;  afe_n(26) <= AFE2_FR_N;
-
-    afe_p(27) <= AFE3_D0_P;  afe_n(27) <= AFE3_D0_N;
-    afe_p(28) <= AFE3_D1_P;  afe_n(28) <= AFE3_D1_N;
-    afe_p(29) <= AFE3_D2_P;  afe_n(29) <= AFE3_D2_N;
-    afe_p(30) <= AFE3_D3_P;  afe_n(30) <= AFE3_D3_N;
-    afe_p(31) <= AFE3_D4_P;  afe_n(31) <= AFE3_D4_N;
-    afe_p(32) <= AFE3_D5_P;  afe_n(32) <= AFE3_D5_N;
-    afe_p(33) <= AFE3_D6_P;  afe_n(33) <= AFE3_D6_N;
-    afe_p(34) <= AFE3_D7_P;  afe_n(34) <= AFE3_D7_N;
-    afe_p(35) <= AFE3_FR_P;  afe_n(35) <= AFE3_FR_N;
-
-    afe_p(36) <= AFE4_D0_P;  afe_n(36) <= AFE4_D0_N;
-    afe_p(37) <= AFE4_D1_P;  afe_n(37) <= AFE4_D1_N;
-    afe_p(38) <= AFE4_D2_P;  afe_n(38) <= AFE4_D2_N;
-    afe_p(39) <= AFE4_D3_P;  afe_n(39) <= AFE4_D3_N;
-    afe_p(40) <= AFE4_D4_P;  afe_n(40) <= AFE4_D4_N;
-    afe_p(41) <= AFE4_D5_P;  afe_n(41) <= AFE4_D5_N;
-    afe_p(42) <= AFE4_D6_P;  afe_n(42) <= AFE4_D6_N;
-    afe_p(43) <= AFE4_D7_P;  afe_n(43) <= AFE4_D7_N;
-    afe_p(44) <= AFE4_FR_P;  afe_n(44) <= AFE4_FR_N;
-
-
-    -- write anything to address RESETFE_ADDR to generate a special reset pulse for the FE logic
-    -- one must do this before using the FE
-
-    fe_reset <= '1' when (std_match(rx_addr,RESETFE_ADDR) and rx_wren='1') else '0';
+    fe_reset <= '1' when (std_match(rx_addr,RESET_AFE_ADDR) and rx_wren='1') else '0';
 
     -- address decode idelay load pulse
     -- this signal originates in oeiclk domain (125MHz) and uses this clock to store value in idelay
     -- note this value range 0-31 and is write only for now, readback is not implemented.
 
-    dewe_gen: for i in 44 downto 0 generate
-
-        delay_ld(i) <= '1' when (rx_wren='1' and (rx_addr=std_logic_vector(unsigned(DELAY_BASEADDR) + i)) ) else '0';
-
-    end generate dewe_gen;
+    delay_ld(0) <= '1' when (std_match(rx_addr,DELAY_AFE0_ADDR) and rx_wren='1') else '0';
+    delay_ld(1) <= '1' when (std_match(rx_addr,DELAY_AFE1_ADDR) and rx_wren='1') else '0';
+    delay_ld(2) <= '1' when (std_match(rx_addr,DELAY_AFE2_ADDR) and rx_wren='1') else '0';
+    delay_ld(3) <= '1' when (std_match(rx_addr,DELAY_AFE3_ADDR) and rx_wren='1') else '0';
+    delay_ld(4) <= '1' when (std_match(rx_addr,DELAY_AFE4_ADDR) and rx_wren='1') else '0';
 
     -- address decode bitslip
-    -- this signal originates in the oeiclk domain (125MHz) but must be resync in the in MCLK domain (62.5MHz) *AND* 
-    -- it must be asserted for only ONE MCLK cycle. the oeiclk domain is faster, so pulse stretch
-    -- it for 3 cycles, then edge detect this signal in the MCLK domain and assert this for one MCLK cycle.
+    -- this signal originates in the oeiclk domain (125MHz) but must be resynchronized in each fclk domain
+    -- and it must be asserted for only ONE fclk cycle. the oeiclk domain is faster, so pulse stretch
+    -- it for 3 cycles, then edge detect this signal in each fclk domain and assert this for one fclk cycle.
 
-    bs0_gen: for i in 44 downto 0 generate
-
-        bitslip_tmp(i) <= '1' when ( rx_wren='1' and (rx_addr=std_logic_vector(unsigned(BITSLIP_BASEADDR) + i)) ) else '0';
-
-    end generate bs0_gen;
-
+    bitslip_tmp(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_ADDR) and rx_wren='1') else '0';
+    bitslip_tmp(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_ADDR) and rx_wren='1') else '0';
+    bitslip_tmp(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_ADDR) and rx_wren='1') else '0';
+    bitslip_tmp(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_ADDR) and rx_wren='1') else '0';
+    bitslip_tmp(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_ADDR) and rx_wren='1') else '0';
+ 
     bs_oei_proc: process(oeiclk) -- 125MHz domain
     begin
         if rising_edge(oeiclk) then
@@ -482,74 +389,68 @@ begin
         end if;
     end process bs_oei_proc;
 
-    bs_mclk_proc: process(mclk) -- 62.5MHz
-    begin
-        if rising_edge(mclk) then
-            bitslip0_mclk_reg <= bitslip3_oei_reg; 
-            bitslip1_mclk_reg <= bitslip0_mclk_reg;
-        end if;
-    end process bs_mclk_proc;
+    bsgen: for i in 4 downto 0 generate
 
-    bs1_gen: for i in 44 downto 0 generate
+        bs_fclk_proc: process( fclk(i) ) -- 62.5MHz
+        begin
+            if rising_edge( fclk(i) ) then
+                bitslip0_fclk_reg(i) <= bitslip3_oei_reg(i); 
+                bitslip1_fclk_reg(i) <= bitslip0_fclk_reg(i);
+            end if;
+        end process bs_fclk_proc;
 
-        bitslip_mclk(i) <= '1' when ( bitslip1_mclk_reg(i)='0' and bitslip0_mclk_reg(i)='1' ) else '0';
+        bitslip_fclk(i) <= '1' when ( bitslip1_fclk_reg(i)='0' and bitslip0_fclk_reg(i)='1' ) else '0';
 
-    end generate bs1_gen;
-
-    -- now instantiate the AFE front end, total 45 channels (40 AFE data channels + 5 frame marker channels)
+    end generate bsgen;
+    
+    -- ok NOW instantiate the AFE front end...
 
     fe_inst: fe 
     port map(
 
-        afe_p => afe_p,
-        afe_n => afe_n,
+        data_p => afe_data_p, 
+        data_n => afe_data_n,
+        dclk_p => afe_dclk_p, 
+        dclk_n => afe_dclk_n,
+        fclk_p => afe_fclk_p,
+        fclk_n => afe_fclk_n,
+
         afe_clk_p => afe_clk_p,
         afe_clk_n => afe_clk_n,
-
-        mclk  => mclk,
-        fclk  => fclk,
-        fclkb => fclkb,
-        sclk  => sclk,
+    
+        mclk => mclk,
+        sclk => sclk,
         reset => fe_reset,
-
+    
         delay_clk => oeiclk,
+        delay_ld  => delay_ld(4 downto 0),
         delay_din => rx_data(4 downto 0),
-        delay_ld  => delay_ld(44 downto 0),
-        delay_dout => delay_dout,
-        delay_rdy  => delay_rdy,
-
-        bitslip   => bitslip_mclk(44 downto 0),
-
-        afe => afe_bus -- mclk domain, this bus is 45x14
+    
+        bitslip  => bitslip_fclk(4 downto 0),
+        fclk_out => fclk(4 downto 0),
+        dout     => afe_dout -- array_5x8x16_type
     );
 
-    -- pad out 45x14 array to 45x16 array (because spy buffers are 16 bits wide)
+    -- make [5]x[8] spy buffers for AFE data, these buffers are READ ONLY
 
-    afegen: for i in 44 downto 0 generate
-
-        afe16_bus(i) <= "00" & afe_bus(i);
-
-    end generate afegen;
-
-    -- make 45 spy buffers for AFE data, these buffers are READ ONLY
-
-    spygen: for i in 44 downto 0 generate
+    spy_afe_gen: for a in 4 downto 0 generate
+        spy_bit_gen: for b in 7 downto 0 generate
     
-        spy_inst: spy
-        port map(
-            -- mclk domain
-            clka  => mclk,
-            reset => reset_sync,
-            trig  => trig_sync,
-            dia   => afe16_bus(i),
-
-            -- oeiclk domain    
-            clkb  => oeiclk,
-            addrb => rx_addr_reg(11 downto 0),
-            dob   => spyout(i)
-          );
-
-    end generate spygen;
+            spy_inst: spy
+            port map(
+                -- fclk domain
+                clka  => fclk(a),
+                reset => reset_async,
+                trig  => trig_fclk(a),
+                dia   => afe_dout(a)(b),
+    
+                -- oeiclk domain    
+                clkb  => oeiclk,
+                addrb => rx_addr_reg(11 downto 0),
+                dob   => spy_bufr(a)(b)
+              );
+        end generate spy_bit_gen;
+    end generate spy_afe_gen;
 
     -- make 4 more spy buffers which are used to store the 64-bit timestamp value
 
@@ -559,14 +460,14 @@ begin
         port map(
             -- mclk domain
             clka  => mclk,
-            reset => reset_sync,
-            trig  => trig_sync,
+            reset => reset_async,
+            trig  => trig_mclk,
             dia   => timestamp_reg( ((i*16)+15) downto (i*16) ),
 
             -- oeiclk domain    
             clkb  => oeiclk,
             addrb => rx_addr_reg(11 downto 0),
-            dob   => timestamp_spy_out( ((i*16)+15) downto (i*16) )
+            dob   => ts_spy_bufr( ((i*16)+15) downto (i*16) )
           );
 
     end generate ts_spy_gen;
@@ -668,104 +569,58 @@ begin
 
     tx_data <= test_reg                        when std_match(rx_addr_reg, TESTREG_ADDR) else 
                fifo_DO                         when std_match(rx_addr_reg, FIFO_ADDR) else 
-               (X"00000000000" & "00" & locked & delay_rdy & status_vector) when std_match(rx_addr_reg, STATVEC_ADDR) else  -- the status register
+               (X"00000000000" & "000" & locked & status_vector) when std_match(rx_addr_reg, STATVEC_ADDR) else  -- the status register
                (X"00000000deadbeef")           when std_match(rx_addr_reg, DEADBEEF_ADDR) else
                (X"0000000"&bram0_do)           when std_match(rx_addr_reg, BRAM0_ADDR) else
                (X"000000000"&version)          when std_match(rx_addr_reg, GITVER_ADDR) else  -- 28 bit GIT commit hash
 
-               (X"000000000000" & spyout( 0))  when std_match(rx_addr_reg, SPYBUF00_BASEADDR) else
-               (X"000000000000" & spyout( 1))  when std_match(rx_addr_reg, SPYBUF01_BASEADDR) else
-               (X"000000000000" & spyout( 2))  when std_match(rx_addr_reg, SPYBUF02_BASEADDR) else
-               (X"000000000000" & spyout( 3))  when std_match(rx_addr_reg, SPYBUF03_BASEADDR) else
-               (X"000000000000" & spyout( 4))  when std_match(rx_addr_reg, SPYBUF04_BASEADDR) else
-               (X"000000000000" & spyout( 5))  when std_match(rx_addr_reg, SPYBUF05_BASEADDR) else
-               (X"000000000000" & spyout( 6))  when std_match(rx_addr_reg, SPYBUF06_BASEADDR) else
-               (X"000000000000" & spyout( 7))  when std_match(rx_addr_reg, SPYBUF07_BASEADDR) else
-               (X"000000000000" & spyout( 8))  when std_match(rx_addr_reg, SPYBUF08_BASEADDR) else
-               (X"000000000000" & spyout( 9))  when std_match(rx_addr_reg, SPYBUF09_BASEADDR) else
-               (X"000000000000" & spyout(10))  when std_match(rx_addr_reg, SPYBUF10_BASEADDR) else
-               (X"000000000000" & spyout(11))  when std_match(rx_addr_reg, SPYBUF11_BASEADDR) else
-               (X"000000000000" & spyout(12))  when std_match(rx_addr_reg, SPYBUF12_BASEADDR) else
-               (X"000000000000" & spyout(13))  when std_match(rx_addr_reg, SPYBUF13_BASEADDR) else
-               (X"000000000000" & spyout(14))  when std_match(rx_addr_reg, SPYBUF14_BASEADDR) else
-               (X"000000000000" & spyout(15))  when std_match(rx_addr_reg, SPYBUF15_BASEADDR) else
-               (X"000000000000" & spyout(16))  when std_match(rx_addr_reg, SPYBUF16_BASEADDR) else
-               (X"000000000000" & spyout(17))  when std_match(rx_addr_reg, SPYBUF17_BASEADDR) else
-               (X"000000000000" & spyout(18))  when std_match(rx_addr_reg, SPYBUF18_BASEADDR) else
-               (X"000000000000" & spyout(19))  when std_match(rx_addr_reg, SPYBUF19_BASEADDR) else
-               (X"000000000000" & spyout(20))  when std_match(rx_addr_reg, SPYBUF20_BASEADDR) else
-               (X"000000000000" & spyout(21))  when std_match(rx_addr_reg, SPYBUF21_BASEADDR) else
-               (X"000000000000" & spyout(22))  when std_match(rx_addr_reg, SPYBUF22_BASEADDR) else
-               (X"000000000000" & spyout(23))  when std_match(rx_addr_reg, SPYBUF23_BASEADDR) else
-               (X"000000000000" & spyout(24))  when std_match(rx_addr_reg, SPYBUF24_BASEADDR) else
-               (X"000000000000" & spyout(25))  when std_match(rx_addr_reg, SPYBUF25_BASEADDR) else
-               (X"000000000000" & spyout(26))  when std_match(rx_addr_reg, SPYBUF26_BASEADDR) else
-               (X"000000000000" & spyout(27))  when std_match(rx_addr_reg, SPYBUF27_BASEADDR) else
-               (X"000000000000" & spyout(28))  when std_match(rx_addr_reg, SPYBUF28_BASEADDR) else
-               (X"000000000000" & spyout(29))  when std_match(rx_addr_reg, SPYBUF29_BASEADDR) else
-               (X"000000000000" & spyout(30))  when std_match(rx_addr_reg, SPYBUF30_BASEADDR) else
-               (X"000000000000" & spyout(31))  when std_match(rx_addr_reg, SPYBUF31_BASEADDR) else
-               (X"000000000000" & spyout(32))  when std_match(rx_addr_reg, SPYBUF32_BASEADDR) else
-               (X"000000000000" & spyout(33))  when std_match(rx_addr_reg, SPYBUF33_BASEADDR) else
-               (X"000000000000" & spyout(34))  when std_match(rx_addr_reg, SPYBUF34_BASEADDR) else
-               (X"000000000000" & spyout(35))  when std_match(rx_addr_reg, SPYBUF35_BASEADDR) else
-               (X"000000000000" & spyout(36))  when std_match(rx_addr_reg, SPYBUF36_BASEADDR) else
-               (X"000000000000" & spyout(37))  when std_match(rx_addr_reg, SPYBUF37_BASEADDR) else
-               (X"000000000000" & spyout(38))  when std_match(rx_addr_reg, SPYBUF38_BASEADDR) else
-               (X"000000000000" & spyout(39))  when std_match(rx_addr_reg, SPYBUF39_BASEADDR) else
-               (X"000000000000" & spyout(40))  when std_match(rx_addr_reg, SPYBUF40_BASEADDR) else
-               (X"000000000000" & spyout(41))  when std_match(rx_addr_reg, SPYBUF41_BASEADDR) else
-               (X"000000000000" & spyout(42))  when std_match(rx_addr_reg, SPYBUF42_BASEADDR) else
-               (X"000000000000" & spyout(43))  when std_match(rx_addr_reg, SPYBUF43_BASEADDR) else
-               (X"000000000000" & spyout(44))  when std_match(rx_addr_reg, SPYBUF44_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(0))  when std_match(rx_addr_reg, SPYBUF_AFE0_D0_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(1))  when std_match(rx_addr_reg, SPYBUF_AFE0_D1_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(2))  when std_match(rx_addr_reg, SPYBUF_AFE0_D2_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(3))  when std_match(rx_addr_reg, SPYBUF_AFE0_D3_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(4))  when std_match(rx_addr_reg, SPYBUF_AFE0_D4_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(5))  when std_match(rx_addr_reg, SPYBUF_AFE0_D5_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(6))  when std_match(rx_addr_reg, SPYBUF_AFE0_D6_BASEADDR) else
+               (X"000000000000" & spy_bufr(0)(7))  when std_match(rx_addr_reg, SPYBUF_AFE0_D7_BASEADDR) else
+         
+               (X"000000000000" & spy_bufr(1)(0))  when std_match(rx_addr_reg, SPYBUF_AFE1_D0_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(1))  when std_match(rx_addr_reg, SPYBUF_AFE1_D1_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(2))  when std_match(rx_addr_reg, SPYBUF_AFE1_D2_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(3))  when std_match(rx_addr_reg, SPYBUF_AFE1_D3_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(4))  when std_match(rx_addr_reg, SPYBUF_AFE1_D4_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(5))  when std_match(rx_addr_reg, SPYBUF_AFE1_D5_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(6))  when std_match(rx_addr_reg, SPYBUF_AFE1_D6_BASEADDR) else
+               (X"000000000000" & spy_bufr(1)(7))  when std_match(rx_addr_reg, SPYBUF_AFE1_D7_BASEADDR) else
 
-               (X"00000000000000" & "000" & delay_dout( 0)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 0)) else
-               (X"00000000000000" & "000" & delay_dout( 1)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 1)) else
-               (X"00000000000000" & "000" & delay_dout( 2)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 2)) else
-               (X"00000000000000" & "000" & delay_dout( 3)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 3)) else
-               (X"00000000000000" & "000" & delay_dout( 4)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 4)) else
-               (X"00000000000000" & "000" & delay_dout( 5)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 5)) else
-               (X"00000000000000" & "000" & delay_dout( 6)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 6)) else
-               (X"00000000000000" & "000" & delay_dout( 7)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 7)) else
-               (X"00000000000000" & "000" & delay_dout( 8)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 8)) else
-               (X"00000000000000" & "000" & delay_dout( 9)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+ 9)) else
-               (X"00000000000000" & "000" & delay_dout(10)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+10)) else
-               (X"00000000000000" & "000" & delay_dout(11)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+11)) else
-               (X"00000000000000" & "000" & delay_dout(12)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+12)) else
-               (X"00000000000000" & "000" & delay_dout(13)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+13)) else
-               (X"00000000000000" & "000" & delay_dout(14)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+14)) else
-               (X"00000000000000" & "000" & delay_dout(15)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+15)) else
-               (X"00000000000000" & "000" & delay_dout(16)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+16)) else
-               (X"00000000000000" & "000" & delay_dout(17)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+17)) else
-               (X"00000000000000" & "000" & delay_dout(18)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+18)) else
-               (X"00000000000000" & "000" & delay_dout(19)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+19)) else
-               (X"00000000000000" & "000" & delay_dout(20)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+20)) else
-               (X"00000000000000" & "000" & delay_dout(21)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+21)) else
-               (X"00000000000000" & "000" & delay_dout(22)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+22)) else
-               (X"00000000000000" & "000" & delay_dout(23)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+23)) else
-               (X"00000000000000" & "000" & delay_dout(24)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+24)) else
-               (X"00000000000000" & "000" & delay_dout(25)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+25)) else
-               (X"00000000000000" & "000" & delay_dout(26)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+26)) else
-               (X"00000000000000" & "000" & delay_dout(27)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+27)) else
-               (X"00000000000000" & "000" & delay_dout(28)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+28)) else
-               (X"00000000000000" & "000" & delay_dout(29)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+29)) else
-               (X"00000000000000" & "000" & delay_dout(30)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+30)) else
-               (X"00000000000000" & "000" & delay_dout(31)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+31)) else
-               (X"00000000000000" & "000" & delay_dout(32)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+32)) else
-               (X"00000000000000" & "000" & delay_dout(33)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+33)) else
-               (X"00000000000000" & "000" & delay_dout(34)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+34)) else
-               (X"00000000000000" & "000" & delay_dout(35)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+35)) else
-               (X"00000000000000" & "000" & delay_dout(36)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+36)) else
-               (X"00000000000000" & "000" & delay_dout(37)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+37)) else
-               (X"00000000000000" & "000" & delay_dout(38)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+38)) else
-               (X"00000000000000" & "000" & delay_dout(39)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+39)) else
-               (X"00000000000000" & "000" & delay_dout(40)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+40)) else
-               (X"00000000000000" & "000" & delay_dout(41)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+41)) else
-               (X"00000000000000" & "000" & delay_dout(42)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+42)) else
-               (X"00000000000000" & "000" & delay_dout(43)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+43)) else
-               (X"00000000000000" & "000" & delay_dout(44)) when (rx_addr_reg = std_logic_vector(unsigned(DELAY_BASEADDR)+44)) else
+               (X"000000000000" & spy_bufr(2)(0))  when std_match(rx_addr_reg, SPYBUF_AFE2_D0_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(1))  when std_match(rx_addr_reg, SPYBUF_AFE2_D1_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(2))  when std_match(rx_addr_reg, SPYBUF_AFE2_D2_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(3))  when std_match(rx_addr_reg, SPYBUF_AFE2_D3_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(4))  when std_match(rx_addr_reg, SPYBUF_AFE2_D4_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(5))  when std_match(rx_addr_reg, SPYBUF_AFE2_D5_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(6))  when std_match(rx_addr_reg, SPYBUF_AFE2_D6_BASEADDR) else
+               (X"000000000000" & spy_bufr(2)(7))  when std_match(rx_addr_reg, SPYBUF_AFE2_D7_BASEADDR) else
 
-               timestamp_spy_out(63 downto 0)  when std_match(rx_addr_reg, SPYBUFTS_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(0))  when std_match(rx_addr_reg, SPYBUF_AFE3_D0_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(1))  when std_match(rx_addr_reg, SPYBUF_AFE3_D1_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(2))  when std_match(rx_addr_reg, SPYBUF_AFE3_D2_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(3))  when std_match(rx_addr_reg, SPYBUF_AFE3_D3_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(4))  when std_match(rx_addr_reg, SPYBUF_AFE3_D4_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(5))  when std_match(rx_addr_reg, SPYBUF_AFE3_D5_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(6))  when std_match(rx_addr_reg, SPYBUF_AFE3_D6_BASEADDR) else
+               (X"000000000000" & spy_bufr(3)(7))  when std_match(rx_addr_reg, SPYBUF_AFE3_D7_BASEADDR) else
+
+               (X"000000000000" & spy_bufr(4)(0))  when std_match(rx_addr_reg, SPYBUF_AFE4_D0_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(1))  when std_match(rx_addr_reg, SPYBUF_AFE4_D1_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(2))  when std_match(rx_addr_reg, SPYBUF_AFE4_D2_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(3))  when std_match(rx_addr_reg, SPYBUF_AFE4_D3_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(4))  when std_match(rx_addr_reg, SPYBUF_AFE4_D4_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(5))  when std_match(rx_addr_reg, SPYBUF_AFE4_D5_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(6))  when std_match(rx_addr_reg, SPYBUF_AFE4_D6_BASEADDR) else
+               (X"000000000000" & spy_bufr(4)(7))  when std_match(rx_addr_reg, SPYBUF_AFE4_D7_BASEADDR) else
+
+               ts_spy_bufr(63 downto 0) when std_match(rx_addr_reg, SPYBUFTS_BASEADDR) else 
+
                (X"00000000" & rx_addr_reg);
 
     -- drive the READY signal back to OEI immediately, this means immediate writes and 
@@ -855,7 +710,7 @@ begin
 	led_temp(2) <= status_vector(0); -- "LED3" on if Ethernet link is UP
 	led_temp(3) <= '1' when (status_vector(11 downto 10)="10") else '0'; -- "LED4" on if link speed is 1000
 	led_temp(4) <= gmii_rx_dv or gmii_tx_en; -- "LED13" is on if there is ethernet RX or TX activity
-	led_temp(5) <= trig_sync;        -- "LED14" is on when DAPHNE is triggered 
+	led_temp(5) <= trig_oei0_reg or trig_oei1_reg or trig_oei2_reg;      -- "LED14" is on when DAPHNE is triggered 
 
 	-- LED driver logic. pulse stretch fast signals so they are visible (aka a "one shot")
 	-- Use a fast clock to sample the signal led_temp. whenever led_temp is HIGH, led0_reg

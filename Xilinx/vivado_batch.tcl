@@ -16,7 +16,6 @@ read_vhdl ../src/daphne_package.vhd
 read_vhdl ../src/febit.vhd
 read_vhdl ../src/fe.vhd
 read_vhdl ../src/spy.vhd
-# read_vhdl ../src/sync.vhd
 read_vhdl ../src/top_level.vhd
 
 read_vhdl ../src/oei/hdl/burst_traffic_controller.vhd
