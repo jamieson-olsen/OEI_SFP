@@ -551,6 +551,9 @@ begin
 
                ts_spy_bufr(63 downto 0) when std_match(rx_addr_reg, SPYBUFTS_BASEADDR) else 
 
+               (X"00000000000000" & "000" & fe_done) when std_match(rx_addr_reg, FEDONE_ADDR) else
+               (X"00000000000000" & "000" & fe_warn) when std_match(rx_addr_reg, FEWARN_ADDR) else
+
                (X"00000000" & rx_addr_reg);
 
     -- drive the READY signal back to OEI immediately, this means immediate writes and 
