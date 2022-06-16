@@ -13,6 +13,10 @@ thing = OEI("192.168.133.12")
 
 print "DAPHNE firmware version %0X" % thing.read(0x9000,1)[2]
 
+print "AFE DONE %0X" % thing.read(0x2002,1)[2]
+
+print "AFE WARN %0X" % thing.read(0x2003,1)[2]
+
 thing.write(0x2000, [1234]) # software trigger, all spy buffers capture
 
 print
