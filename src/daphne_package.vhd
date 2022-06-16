@@ -21,84 +21,28 @@ package daphne_package is
     constant FIFO_ADDR:     std_logic_vector(31 downto 0) := X"80000000";
 
     type array_5x9_type is array (4 downto 0) of std_logic_vector(8 downto 0);
+    type array_8x14_type is array (7 downto 0) of std_logic_vector(13 downto 0);
+    type array_9x14_type is array (8 downto 0) of std_logic_vector(13 downto 0);
     type array_9x16_type is array (8 downto 0) of std_logic_vector(15 downto 0);
-    type array_5x9x16_type is array (4 downto 0) of array_9x16_type;
 
-    -- DAPHNE specific addresses
+    type array_5x9x14_type is array (4 downto 0) of array_9x14_type;
+    type array_5x9x16_type is array (4 downto 0) of array_9x16_type;
 
     -- write anything to this address to force trigger
 
-    constant TRIGGER_ADDR:      std_logic_vector(31 downto 0) := X"00002000";
+    constant TRIGGER_ADDR: std_logic_vector(31 downto 0) := X"00002000";
 
     -- write anything to this address to force reset of the AFE front end logic
 
-    constant RESETFE_ADDR:    std_logic_vector(31 downto 0) := X"00002001";
+    constant RESETFE_ADDR: std_logic_vector(31 downto 0) := X"00002001";
 
-    -- write anything to bitslip the specified channel, note these are not separate
+    -- read the status of the automatic front end logic (is it done?)
 
-    constant BITSLIP_AFE0_D0_ADDR:  std_logic_vector(31 downto 0) := X"00003000";
-    constant BITSLIP_AFE0_D1_ADDR:  std_logic_vector(31 downto 0) := X"00003001";
-    constant BITSLIP_AFE0_D2_ADDR:  std_logic_vector(31 downto 0) := X"00003002";
-    constant BITSLIP_AFE0_D3_ADDR:  std_logic_vector(31 downto 0) := X"00003003";
-    constant BITSLIP_AFE0_D4_ADDR:  std_logic_vector(31 downto 0) := X"00003004";
-    constant BITSLIP_AFE0_D5_ADDR:  std_logic_vector(31 downto 0) := X"00003005";
-    constant BITSLIP_AFE0_D6_ADDR:  std_logic_vector(31 downto 0) := X"00003006";
-    constant BITSLIP_AFE0_D7_ADDR:  std_logic_vector(31 downto 0) := X"00003007";
-    constant BITSLIP_AFE0_FR_ADDR:  std_logic_vector(31 downto 0) := X"00003008";
+    constant FEDONE_ADDR: std_logic_vector(31 downto 0) := X"00002002";
 
-    constant BITSLIP_AFE1_D0_ADDR:  std_logic_vector(31 downto 0) := X"00003010";
-    constant BITSLIP_AFE1_D1_ADDR:  std_logic_vector(31 downto 0) := X"00003011";
-    constant BITSLIP_AFE1_D2_ADDR:  std_logic_vector(31 downto 0) := X"00003012";
-    constant BITSLIP_AFE1_D3_ADDR:  std_logic_vector(31 downto 0) := X"00003013";
-    constant BITSLIP_AFE1_D4_ADDR:  std_logic_vector(31 downto 0) := X"00003014";
-    constant BITSLIP_AFE1_D5_ADDR:  std_logic_vector(31 downto 0) := X"00003015";
-    constant BITSLIP_AFE1_D6_ADDR:  std_logic_vector(31 downto 0) := X"00003016";
-    constant BITSLIP_AFE1_D7_ADDR:  std_logic_vector(31 downto 0) := X"00003017";
-    constant BITSLIP_AFE1_FR_ADDR:  std_logic_vector(31 downto 0) := X"00003018";
+    -- read the status of the automatic front end logic (warning of bit errors)
 
-    constant BITSLIP_AFE2_D0_ADDR:  std_logic_vector(31 downto 0) := X"00003020";
-    constant BITSLIP_AFE2_D1_ADDR:  std_logic_vector(31 downto 0) := X"00003021";
-    constant BITSLIP_AFE2_D2_ADDR:  std_logic_vector(31 downto 0) := X"00003022";
-    constant BITSLIP_AFE2_D3_ADDR:  std_logic_vector(31 downto 0) := X"00003023";
-    constant BITSLIP_AFE2_D4_ADDR:  std_logic_vector(31 downto 0) := X"00003024";
-    constant BITSLIP_AFE2_D5_ADDR:  std_logic_vector(31 downto 0) := X"00003025";
-    constant BITSLIP_AFE2_D6_ADDR:  std_logic_vector(31 downto 0) := X"00003026";
-    constant BITSLIP_AFE2_D7_ADDR:  std_logic_vector(31 downto 0) := X"00003027";
-    constant BITSLIP_AFE2_FR_ADDR:  std_logic_vector(31 downto 0) := X"00003028";
-
-    constant BITSLIP_AFE3_D0_ADDR:  std_logic_vector(31 downto 0) := X"00003030";
-    constant BITSLIP_AFE3_D1_ADDR:  std_logic_vector(31 downto 0) := X"00003031";
-    constant BITSLIP_AFE3_D2_ADDR:  std_logic_vector(31 downto 0) := X"00003032";
-    constant BITSLIP_AFE3_D3_ADDR:  std_logic_vector(31 downto 0) := X"00003033";
-    constant BITSLIP_AFE3_D4_ADDR:  std_logic_vector(31 downto 0) := X"00003034";
-    constant BITSLIP_AFE3_D5_ADDR:  std_logic_vector(31 downto 0) := X"00003035";
-    constant BITSLIP_AFE3_D6_ADDR:  std_logic_vector(31 downto 0) := X"00003036";
-    constant BITSLIP_AFE3_D7_ADDR:  std_logic_vector(31 downto 0) := X"00003037";
-    constant BITSLIP_AFE3_FR_ADDR:  std_logic_vector(31 downto 0) := X"00003038";
-
-    constant BITSLIP_AFE4_D0_ADDR:  std_logic_vector(31 downto 0) := X"00003040";
-    constant BITSLIP_AFE4_D1_ADDR:  std_logic_vector(31 downto 0) := X"00003041";
-    constant BITSLIP_AFE4_D2_ADDR:  std_logic_vector(31 downto 0) := X"00003042";
-    constant BITSLIP_AFE4_D3_ADDR:  std_logic_vector(31 downto 0) := X"00003043";
-    constant BITSLIP_AFE4_D4_ADDR:  std_logic_vector(31 downto 0) := X"00003044";
-    constant BITSLIP_AFE4_D5_ADDR:  std_logic_vector(31 downto 0) := X"00003045";
-    constant BITSLIP_AFE4_D6_ADDR:  std_logic_vector(31 downto 0) := X"00003046";
-    constant BITSLIP_AFE4_D7_ADDR:  std_logic_vector(31 downto 0) := X"00003047";
-    constant BITSLIP_AFE4_FR_ADDR:  std_logic_vector(31 downto 0) := X"00003048";
-
-
-
-
-
-
-
-    -- write idelay value (range 0-31) to all channels of the AFE chip
-
-    constant DELAY_AFE0_ADDR:    std_logic_vector(31 downto 0) := X"00004000";
-    constant DELAY_AFE1_ADDR:    std_logic_vector(31 downto 0) := X"00004001";
-    constant DELAY_AFE2_ADDR:    std_logic_vector(31 downto 0) := X"00004002";
-    constant DELAY_AFE3_ADDR:    std_logic_vector(31 downto 0) := X"00004003";
-    constant DELAY_AFE4_ADDR:    std_logic_vector(31 downto 0) := X"00004004";
+    constant FEWARN_ADDR: std_logic_vector(31 downto 0) := X"00002003";
 
     -- spy buffers are 4k deep
 

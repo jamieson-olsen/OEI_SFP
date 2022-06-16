@@ -28,7 +28,7 @@ A free running 64 bit counter is used as the timestamp. This timestamp can be re
 
 ### AFE Front End
 
-This design includes the AFE front end logic, in which the user MANUALLY deskews and aligns the high speed AFE data outputs (IDELAY) and convert the serial data stream to parallel (ISERDES). There are 45 channels, 9 per AFE chip (8 data channels and one "FCLK" or frame channel). See procedure below.
+This design includes a new AFE front end which is now fully automatic and requires no user intervention. This front end adjusts the input delay of the AFE serial data lines so that the sample point is in the center of the data "eye", which is about 1.1ns wide. It then monitors the AFE "frame" pattern and adjusts the serial to parallel converter until the 14 bit parallel word is properly aligned.
 
 ### Spy Buffers
 
@@ -64,67 +64,8 @@ The memory map is defined in daphne_package.vhd and the address space is 32 bit.
 
 0x00002000               Write anything to trigger spy buffers
 0x00002001               Write anything to reset the AFE front end logic, need to do this first, before calibration.
-
-Write anything these registers to BITSLIP the corresponding AFE chip 
-(note that bitslip is applied to individual channels now!)
-
-0x00003000 bitslip AFE0 D0
-0x00003001 bitslip AFE0 D1 
-0x00003002 bitslip AFE0 D2 
-0x00003003 bitslip AFE0 D3
-0x00003004 bitslip AFE0 D4
-0x00003005 bitslip AFE0 D5
-0x00003006 bitslip AFE0 D6 
-0x00003007 bitslip AFE0 D7 
-0x00003008 bitslip AFE0 Frame
-
-0x00003010 bitslip AFE1 D0
-0x00003011 bitslip AFE1 D1 
-0x00003012 bitslip AFE1 D2 
-0x00003013 bitslip AFE1 D3
-0x00003014 bitslip AFE1 D4
-0x00003015 bitslip AFE1 D5
-0x00003016 bitslip AFE1 D6 
-0x00003017 bitslip AFE1 D7 
-0x00003018 bitslip AFE1 Frame
-
-0x00003020 bitslip AFE2 D0
-0x00003021 bitslip AFE2 D1 
-0x00003022 bitslip AFE2 D2 
-0x00003023 bitslip AFE2 D3
-0x00003024 bitslip AFE2 D4
-0x00003025 bitslip AFE2 D5
-0x00003026 bitslip AFE2 D6 
-0x00003027 bitslip AFE2 D7 
-0x00003028 bitslip AFE2 Frame
-
-0x00003030 bitslip AFE3 D0
-0x00003031 bitslip AFE3 D1 
-0x00003032 bitslip AFE3 D2 
-0x00003033 bitslip AFE3 D3
-0x00003034 bitslip AFE3 D4
-0x00003035 bitslip AFE3 D5
-0x00003036 bitslip AFE3 D6 
-0x00003037 bitslip AFE3 D7 
-0x00003038 bitslip AFE3 Frame
-
-0x00003040 bitslip AFE4 D0
-0x00003041 bitslip AFE4 D1 
-0x00003042 bitslip AFE4 D2 
-0x00003043 bitslip AFE4 D3
-0x00003044 bitslip AFE4 D4
-0x00003045 bitslip AFE4 D5
-0x00003046 bitslip AFE4 D6 
-0x00003047 bitslip AFE4 D7 
-0x00003048 bitslip AFE4 Frame
-
-Write fine delay tap value (range 0-31) the correspoding AFE chip:
-
-0x00004000 idelay value AFE0
-0x00004001 idelay value AFE1
-0x00004002 idelay value AFE2
-0x00004003 idelay value AFE3
-0x00004004 idelay value AFE4
+0x00002002               Read the status of the AFE automatic alignment front end, lower 5 bits should be HIGH
+0x00002003               Read the status of the AFE automatic front end, lower 5 bits warn of potential bit errors, should be zero.
 
 AFE Spy Buffers are 14 bits wide and are read-only:
 
@@ -178,25 +119,12 @@ AFE Spy Buffers are 14 bits wide and are read-only:
 0x40470000 - 0x404703FF Spy Buffer AFE4 data7
 0x40480000 - 0x404803FF Spy Buffer AFE4 frame
 
+Note that the frame markers should always read "11111110000000"  (0x3F80)
+
 The Timestamp counter is also stored in a Spy buffer
 this is 64 bits wide and is read only.
 
 0x40500000 - 0x405003FF Spy Buffer for Timestamp
-```
-### Manual Alignment Procedure
-
-0. Write to reset AFE front end logic
-1. Put AFEs into fixed test pattern output mode
-2. Force trigger
-3. Readout Spy buffer for channel x
-4. Write fine delay value for channel x
-5. Repeat steps 2-5 for all delay values 0-31
-6. Note when data pattern "jumps" -- that is the edge of the bit window
-7. choose center value, write that to delay register for channel x (now you are sampling in center of the eye!)
-8. trigger, readout, and bitslip as needed until received data pattern is correct on channel x
-9. put AFEs back into normal data mode
-
-Note that the frame markers should always read "11111110000000"  (0x3F80)
 
 ## Build Instructions
 

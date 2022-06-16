@@ -1,7 +1,7 @@
 -- febit.vhd
 -- DAPHNE FPGA AFE front end for one bit. This module does the following:
 -- single LVDS receiver with IDELAY and ISERDES (master + slave cascaded)
--- LVDS input is DDR 14 bit, manual input delay and manual bitslip
+-- LVDS input is DDR 14 bit
 --
 -- Jamieson Olsen <jamieson@fnal.gov>
 
@@ -12,27 +12,24 @@ use ieee.numeric_std.all;
 library unisim;
 use unisim.vcomponents.all;
 
-use work.daphne_package.all;
-
 entity febit is
 port(
     din_p, din_n:  std_logic;  -- LVDS data input from AFE chip
-    mclk:       in std_logic;  -- master clock 62.5MHz
-    fclk:       in std_logic;  -- 7 x clock = 437.5MHz, from internal PLL, not from IOB
-    reset:      in std_logic;  -- sync to mclk
-    bitslip:    in std_logic;  -- sync to mclk
-    delay_clk:  in std_logic;                     -- clock for loading idelay value
-    delay_ld:   in std_logic;                     -- sync delay load
-    delay_din:  in std_logic_vector(4 downto 0);  -- sync delay value (range 0 to 31)
-    q:          out std_logic_vector(15 downto 0) -- aligned data
+    clock:        in std_logic;  -- master clock
+    clock7x:      in std_logic;  -- 7 x clock, from internal PLL, not from IOB
+    reset:       in std_logic;
+    bitslip:     in std_logic;
+    load:        in std_logic;                     
+    cntvalue:    in std_logic_vector(4 downto 0);  
+    q:           out std_logic_vector(13 downto 0)
   );
 end febit;
 
 architecture febit_arch of febit is
 
-    signal fclkb: std_logic;
+    signal clock7xb: std_logic;
     signal din_ibuf, din_delayed : std_logic;
-    signal icascade1, icascade2 : std_logic;
+    signal icascade1, icascade2  : std_logic;
     
 begin
 
@@ -66,19 +63,19 @@ begin
     port map(
         CNTVALUEOUT => open,
         DATAOUT     => din_delayed,
-        C           => delay_clk,
+        C           => clock,
         CE          => '0',
         CINVCTRL    => '0',
-        CNTVALUEIN  => delay_din,
+        CNTVALUEIN  => cntvalue,
         DATAIN      => '0', 
         IDATAIN     => din_ibuf,
         INC         => '0', 
-        LD          => delay_ld,
+        LD          => load,
         LDPIPEEN    => '0',
         REGRST      => '0' -- no reset on this primitive (but there IS a reset on the controller!)
     );
 
-    fclkb <= not fclk;  -- LOCAL inversion on fast clock! Important! Don't use a separate BUFG net for this!
+    clock7xb <= not clock7x;  -- LOCAL inversion on fast clock! Important! Don't use a separate BUFG net for this!
 
     -- master/slave cascaded pair of ISERDES serial-to-parallel converters, inspired by selectio_wiz 
 
@@ -105,16 +102,16 @@ begin
         Q8                => q(7),
         SHIFTOUT1         => icascade1,        -- connection to slave
         SHIFTOUT2         => icascade2,
-        BITSLIP           => bitslip,          -- sync to MCLK
+        BITSLIP           => bitslip,          -- sync to clk
         CE1               => '1',              -- clock always enabled
         CE2               => '1', 
-        CLK               => fclk,           -- fast bit clock
-        CLKB              => fclkb,          -- inverted fast clock
-        CLKDIV            => mclk,            -- slow clock
+        CLK               => clock7x,           -- fast bit clock
+        CLKB              => clock7xb,          -- inverted fast clock
+        CLKDIV            => clock,             -- slow clock
         CLKDIVP           => '0',              -- not used tie low
         D                 => '0',              -- from iob, not used
         DDLY              => din_delayed,      -- from idelay use this one
-        RST               => reset,            -- sync to MCLK
+        RST               => reset,            -- sync to clk
         SHIFTIN1          => '0',
         SHIFTIN2          => '0',
         DYNCLKDIVSEL      => '0',
@@ -153,13 +150,13 @@ begin
         BITSLIP           => bitslip,   
         CE1               => '1',       
         CE2               => '1',      
-        CLK               => fclk,    
-        CLKB              => fclkb,   
-        CLKDIV            => mclk, 
+        CLK               => clock7x,    
+        CLKB              => clock7xb,   
+        CLKDIV            => clock, 
         CLKDIVP           => '0',       -- tie low
         D                 => '0',       -- not used on slave
         DDLY              => '0',       -- not used on slave
-        RST               => reset,     -- sync to MCLK
+        RST               => reset,     -- sync to clk
         DYNCLKDIVSEL      => '0',
         DYNCLKSEL         => '0',
         OFB               => '0',
@@ -167,8 +164,5 @@ begin
         OCLKB             => '0',
         O                 => open
     );
-
-    q(14) <= '0';
-    q(15) <= '0';
 
 end febit_arch;

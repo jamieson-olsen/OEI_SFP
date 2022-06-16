@@ -14,7 +14,9 @@ set_part xc7a200t-fbg676-2
 
 read_vhdl ../src/daphne_package.vhd
 read_vhdl ../src/febit.vhd
-read_vhdl ../src/fe.vhd
+read_vhdl ../src/auto_fsm.vhd
+read_vhdl ../src/auto_afe.vhd
+read_vhdl ../src/front_end.vhd
 read_vhdl ../src/spy.vhd
 # read_vhdl ../src/sync.vhd
 read_vhdl ../src/top_level.vhd

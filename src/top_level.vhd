@@ -135,22 +135,19 @@ architecture top_level_arch of top_level is
     );
     end component;
 
-    component fe
+    component front_end
     port(
-        afe_p, afe_n:         in  array_5x9_type;
-        afe_clk_p, afe_clk_n: out std_logic; -- copy of 62.5MHz master clock sent to AFEs
-
-        sclk:  in std_logic; -- 200MHz system clock, constant
-        reset: in std_logic;
-  
-        delay_clk: in std_logic;
-        delay_din: in std_logic_vector(4 downto 0);
-        delay_ld:  in std_logic_vector(4 downto 0);
-
-        mclk:    in std_logic; -- master clock 62.5MHz
-        fclk:    in std_logic; -- 7 x master clock = 437.5MHz
-        bitslip: in array_5x9_type;  -- sync to MCLK
-        q:       out array_5x9x16_type
+        afe_p: in array_5x9_type;
+        afe_n: in array_5x9_type;
+        afe_clk_p:  out std_logic; -- copy of 62.5MHz master clock sent to AFEs
+        afe_clk_n:  out std_logic;
+        clock:   in  std_logic; -- master clock 62.5MHz
+        clock7x: in  std_logic; -- 7 x master clock = 437.5MHz
+        sclk:    in  std_logic; -- 200MHz system clock, constant
+        reset:   in  std_logic;
+        done:    out std_logic_vector(4 downto 0); -- status of automatic alignment FSM
+        warn:    out std_logic_vector(4 downto 0); -- warn of bit errors on the "FCLK" sync pattern
+        dout:    out array_5x9x14_type -- data synchronized to clock
       );
     end component;
 
@@ -207,16 +204,13 @@ architecture top_level_arch of top_level is
     signal mclk: std_logic;
     signal fclk: std_logic;
 
-    signal bitslip_tmp, bitslip3_oei_reg, bitslip2_oei_reg, bitslip1_oei_reg, bitslip0_oei_reg: array_5x9_type;  
-    signal bitslip0_mclk_reg, bitslip1_mclk_reg, bitslip_mclk: array_5x9_type;  
+    signal afe_dout: array_5x9x14_type;
+    signal afe_dout_pad: array_5x9x16_type;
+    signal fe_done, fe_warn: std_logic_vector(4 downto 0);
 
-    signal delay_ld: std_logic_vector(4 downto 0);
-
-    signal afe_dout: array_5x9x16_type;
     signal spy_bufr: array_5x9x16_type;
     
     signal timestamp_reg, ts_spy_bufr: std_logic_vector(63 downto 0);
-
 
 begin
 
@@ -341,121 +335,29 @@ begin
 
     fe_reset <= '1' when (std_match(rx_addr,RESETFE_ADDR) and rx_wren='1') else '0';
 
-    -- address decode idelay load pulse
-    -- this signal originates in oeiclk domain (125MHz) and uses this clock to store value in idelay
-    -- note this value range 0-31 and is write only for now, readback is not implemented.
+    -- now instantiate the AUTOMATIC AFE front end, total 45 channels (40 AFE data channels + 5 frame marker channels)
 
-    delay_ld(0) <= '1' when (std_match(rx_addr,DELAY_AFE0_ADDR) and rx_wren='1') else '0';
-    delay_ld(1) <= '1' when (std_match(rx_addr,DELAY_AFE1_ADDR) and rx_wren='1') else '0';
-    delay_ld(2) <= '1' when (std_match(rx_addr,DELAY_AFE2_ADDR) and rx_wren='1') else '0';
-    delay_ld(3) <= '1' when (std_match(rx_addr,DELAY_AFE3_ADDR) and rx_wren='1') else '0';
-    delay_ld(4) <= '1' when (std_match(rx_addr,DELAY_AFE4_ADDR) and rx_wren='1') else '0';
-
-    -- address decode bitslip
-    -- this signal originates in the oeiclk domain (125MHz) but must be resync in the in MCLK domain (62.5MHz) *AND* 
-    -- it must be asserted for only *ONE* MCLK cycle. the oeiclk domain is faster, so pulse stretch
-    -- it for 3 cycles, then edge detect this signal in the MCLK domain and assert this for one MCLK cycle    
-
-    bitslip_tmp(0)(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D0_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D1_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D2_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D3_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D4_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(5) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D5_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(6) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D6_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(7) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_D7_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(0)(8) <= '1' when (std_match(rx_addr,BITSLIP_AFE0_FR_ADDR) and rx_wren='1') else '0';
-
-    bitslip_tmp(1)(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D0_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D1_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D2_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D3_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D4_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(5) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D5_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(6) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D6_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(7) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_D7_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(1)(8) <= '1' when (std_match(rx_addr,BITSLIP_AFE1_FR_ADDR) and rx_wren='1') else '0';
-
-    bitslip_tmp(2)(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D0_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D1_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D2_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D3_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D4_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(5) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D5_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(6) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D6_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(7) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_D7_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(2)(8) <= '1' when (std_match(rx_addr,BITSLIP_AFE2_FR_ADDR) and rx_wren='1') else '0';
-
-    bitslip_tmp(3)(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D0_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D1_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D2_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D3_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D4_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(5) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D5_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(6) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D6_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(7) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_D7_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(3)(8) <= '1' when (std_match(rx_addr,BITSLIP_AFE3_FR_ADDR) and rx_wren='1') else '0';
-
-    bitslip_tmp(4)(0) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D0_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(1) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D1_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(2) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D2_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(3) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D3_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(4) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D4_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(5) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D5_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(6) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D6_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(7) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_D7_ADDR) and rx_wren='1') else '0';
-    bitslip_tmp(4)(8) <= '1' when (std_match(rx_addr,BITSLIP_AFE4_FR_ADDR) and rx_wren='1') else '0';
-
-    bs_oei_proc: process(oeiclk) -- 125MHz domain
-    begin
-        if rising_edge(oeiclk) then
-            bitslip0_oei_reg <= bitslip_tmp;
-            bitslip1_oei_reg <= bitslip0_oei_reg;
-            bitslip2_oei_reg <= bitslip1_oei_reg;
-            for a in 4 downto 0 loop
-                for b in 8 downto 0 loop
-                    bitslip3_oei_reg(a)(b) <= bitslip2_oei_reg(a)(b) or bitslip1_oei_reg(a)(b) or bitslip0_oei_reg(a)(b); -- will be high for minimum 3 oei clks
-                end loop;
-            end loop;
-        end if;
-    end process bs_oei_proc;
-
-    bs_mclk_proc: process(mclk) -- 62.5MHz
-    begin
-        if rising_edge(mclk) then
-            bitslip0_mclk_reg <= bitslip3_oei_reg; 
-            bitslip1_mclk_reg <= bitslip0_mclk_reg;
-        end if;
-    end process bs_mclk_proc;
-
-    gen_bs_afe: for a in 4 downto 0 generate
-        gen_bs_bit: for b in 8 downto 0 generate
-            bitslip_mclk(a)(b) <= '1' when ( bitslip1_mclk_reg(a)(b)='0' and bitslip0_mclk_reg(a)(b)='1' ) else '0';
-        end generate gen_bs_bit;
-    end generate gen_bs_afe;
-
-    -- now instantiate the AFE front end, total 45 channels (40 AFE data channels + 5 frame marker channels)
-
-    fe_inst: fe 
+    fe_inst: front_end 
     port map(
-
         afe_p => afe_p,
         afe_n => afe_n,
         afe_clk_p => afe_clk_p,
         afe_clk_n => afe_clk_n,
-
-        mclk  => mclk,
-        fclk  => fclk,
-        sclk  => sclk,
+        clock => mclk,
+        clock7x => fclk,
+        sclk => sclk,
         reset => fe_reset,
-
-        delay_clk => oeiclk,
-        delay_din => rx_data(4 downto 0),
-        delay_ld  => delay_ld(4 downto 0),
-
-        bitslip   => bitslip_mclk,
-        q => afe_dout -- mclk domain 5x9x16
+        done  => fe_done,
+        warn => fe_warn,
+        dout => afe_dout -- 5x9x14
     );
+
+    -- pad this out to make it 5x9x16
+    gen_a: for a in 4 downto 0 generate
+        gen_b: for b in 8 downto 0 generate
+            afe_dout_pad(a)(b) <= "00" & afe_dout(a)(b);
+        end generate gen_b;
+    end generate gen_a;
 
     -- make 45 spy buffers for AFE data, these buffers are READ ONLY
 
@@ -467,7 +369,7 @@ begin
                 clka  => mclk,
                 reset => reset_mclk,
                 trig  => trig_sync,
-                dia   => afe_dout(a)(b),
+                dia   => afe_dout_pad(a)(b),
                 -- oeiclk domain    
                 clkb  => oeiclk,
                 addrb => rx_addr_reg(11 downto 0),
@@ -734,9 +636,9 @@ begin
     -- "LED14"   "LED13"    "LED4"     "LED3"    "LED2"    "LED1"    "LED5 (uC)"     
 
 	led_temp(0) <= locked;           -- "LED1" on if main PLL MMCM locked and clocks running
-    led_temp(1) <= not sfp_los;      -- "LED2" on if SFP module is detecting a signal
-	led_temp(2) <= status_vector(0); -- "LED3" on if Ethernet link is UP
-	led_temp(3) <= '1' when (status_vector(11 downto 10)="10") else '0'; -- "LED4" on if link speed is 1000
+    led_temp(1) <= '1' when (fe_done="11111") else '0'; -- "LED2" on automatic front end is DONE
+	led_temp(2) <= '1' when (fe_warn="11111") else '0'; -- "LED3" on if automatic front end reports bit error warnings
+	led_temp(3) <= '1' when (status_vector(0)='1' and status_vector(11 downto 10)="10") else '0'; -- "LED4" on if link is UP and speed is 1000
 	led_temp(4) <= gmii_rx_dv or gmii_tx_en; -- "LED13" is on if there is ethernet RX or TX activity
 	led_temp(5) <= trig_sync;        -- "LED14" is on when DAPHNE is triggered 
 
