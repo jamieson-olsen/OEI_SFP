@@ -194,7 +194,7 @@ architecture top_level_arch of top_level is
     -- DAPHNE specific signals...
 
 	signal reset_async, reset_mclk: std_logic;
-    signal fe_reset: std_logic;
+    signal fe_reset, fe_reset_mclk: std_logic;
 
     signal trig_sync, trig_gbe: std_logic;
     signal trig_gbe0_reg, trig_gbe1_reg, trig_gbe2_reg: std_logic;
@@ -331,9 +331,23 @@ begin
     end process trig_proc;
 
     -- write anything to address RESETFE_ADDR to generate a special reset pulse for the FE logic
-    -- one must do this before using the FE
+    -- note this is in the 125MHz clock domain
 
     fe_reset <= '1' when (std_match(rx_addr,RESETFE_ADDR) and rx_wren='1') else '0';
+
+    -- now square up this reset signal in the mclk domain
+    -- also, hold the front end logic in reset until the main PLL is locked
+
+    fe_rst_proc: process(mclk)
+    begin
+        if rising_edge(mclk) then
+            if (locked='0' or fe_reset='1') then
+                fe_reset_mclk <= '1';
+            else
+                fe_reset_mclk <= '0';
+            end if;
+        end if;
+    end process;
 
     -- now instantiate the AUTOMATIC AFE front end, total 45 channels (40 AFE data channels + 5 frame marker channels)
 
@@ -346,7 +360,7 @@ begin
         clock => mclk,
         clock7x => fclk,
         sclk => sclk,
-        reset => fe_reset,
+        reset => fe_reset_mclk,
         done  => fe_done,
         warn => fe_warn,
         dout => afe_dout -- 5x9x14
