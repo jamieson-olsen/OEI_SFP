@@ -147,6 +147,7 @@ architecture top_level_arch of top_level is
         reset:   in  std_logic;
         done:    out std_logic_vector(4 downto 0); -- status of automatic alignment FSM
         warn:    out std_logic_vector(4 downto 0); -- warn of bit errors on the "FCLK" sync pattern
+        errcnt:  out array_5x8_type;
         dout:    out array_5x9x14_type -- data synchronized to clock
       );
     end component;
@@ -212,6 +213,8 @@ architecture top_level_arch of top_level is
     signal spy_bufr: array_5x9x16_type;
     
     signal timestamp_reg, ts_spy_bufr: std_logic_vector(63 downto 0);
+
+    signal errcnt: array_5x8_type;
 
 begin
 
@@ -377,6 +380,7 @@ begin
         reset => fe_reset_mclk,
         done  => fe_done,
         warn => fe_warn,
+        errcnt => errcnt,
         dout => afe_dout -- 5x9x14
     );
 
@@ -581,6 +585,12 @@ begin
 
                (X"00000000000000" & "000" & fe_done) when std_match(rx_addr_reg, FEDONE_ADDR) else
                (X"00000000000000" & "000" & fe_warn) when std_match(rx_addr_reg, FEWARN_ADDR) else
+
+               (X"00000000000000" & errcnt(0)) when std_match(rx_addr_reg, AFE0_ERRCNT_ADDR) else
+               (X"00000000000000" & errcnt(1)) when std_match(rx_addr_reg, AFE1_ERRCNT_ADDR) else
+               (X"00000000000000" & errcnt(2)) when std_match(rx_addr_reg, AFE2_ERRCNT_ADDR) else
+               (X"00000000000000" & errcnt(3)) when std_match(rx_addr_reg, AFE3_ERRCNT_ADDR) else
+               (X"00000000000000" & errcnt(4)) when std_match(rx_addr_reg, AFE4_ERRCNT_ADDR) else
 
                (X"00000000" & rx_addr_reg);
 

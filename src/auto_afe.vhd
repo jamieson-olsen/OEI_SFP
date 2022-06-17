@@ -25,9 +25,10 @@ port(
 
     clock:   in  std_logic;  -- master clock 62.5MHz
     clock7x: in  std_logic;  -- 7 x master clock = 437.5MHz
-    reset:   in  std_logic;
-    done:    out std_logic;
-    warn:    out std_logic; -- warning! I have detected a bit error on the FCLK pattern!
+    reset:   in  std_logic;  -- this reset pulse should be sync to clock and asserted for one clock period only
+    done:    out std_logic;  -- fsm has completed the auto alignment procedure
+    warn:    out std_logic;  -- momentary pulse to indicate a bit error on the FCLK pattern
+    errcnt:  out std_logic_vector(7 downto 0); -- count the number of errors observed on the FCLK pattern
     dout:    out array_9x14_type
   );
 end auto_afe;
@@ -57,7 +58,8 @@ architecture auto_afe_arch of auto_afe is
         cntvalue: out std_logic_vector(4 downto 0); -- the delay tap value to write into IDELAY
         load: out std_logic; -- load cntvalue into IDELAY
         done: out std_logic;
-        warn: out std_logic
+        warn: out std_logic;
+        errcnt: out std_logic_vector(7 downto 0)
       );
     end component;
 
@@ -104,7 +106,8 @@ begin
         cntvalue => cntvalue,
         load => load,
         done => done,
-        warn => warn
+        warn => warn, 
+        errcnt => errcnt
     );
 
     dout(8) <= fclk_patt;

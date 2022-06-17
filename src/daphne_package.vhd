@@ -20,6 +20,7 @@ package daphne_package is
     constant TESTREG_ADDR:  std_logic_vector(31 downto 0) := X"12345678";
     constant FIFO_ADDR:     std_logic_vector(31 downto 0) := X"80000000";
 
+    type array_5x8_type is array (4 downto 0) of std_logic_vector(7 downto 0);
     type array_5x9_type is array (4 downto 0) of std_logic_vector(8 downto 0);
     type array_8x14_type is array (7 downto 0) of std_logic_vector(13 downto 0);
     type array_9x14_type is array (8 downto 0) of std_logic_vector(13 downto 0);
@@ -43,6 +44,14 @@ package daphne_package is
     -- read the status of the automatic front end logic (warning of bit errors)
 
     constant FEWARN_ADDR: std_logic_vector(31 downto 0) := X"00002003";
+
+    -- read the error count for each AFE front end module (range 0 to 255)
+
+    constant AFE0_ERRCNT_ADDR: std_logic_vector(31 downto 0) := X"00002010";
+    constant AFE1_ERRCNT_ADDR: std_logic_vector(31 downto 0) := X"00002011";
+    constant AFE2_ERRCNT_ADDR: std_logic_vector(31 downto 0) := X"00002012";
+    constant AFE3_ERRCNT_ADDR: std_logic_vector(31 downto 0) := X"00002013";
+    constant AFE4_ERRCNT_ADDR: std_logic_vector(31 downto 0) := X"00002014";
 
     -- spy buffers are 4k deep
 
