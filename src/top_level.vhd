@@ -195,6 +195,7 @@ architecture top_level_arch of top_level is
 
 	signal reset_async, reset_mclk: std_logic;
     signal fe_reset, fe_reset_mclk: std_logic;
+    signal reset_counter: std_logic_vector(7 downto 0);
 
     signal trig_sync, trig_gbe: std_logic;
     signal trig_gbe0_reg, trig_gbe1_reg, trig_gbe2_reg: std_logic;
@@ -331,7 +332,9 @@ begin
     end process trig_proc;
 
     -- write anything to address RESETFE_ADDR to generate a special reset pulse for the FE logic
-    -- note this is in the 125MHz clock domain
+    -- note this is in the 125MHz clock domain. The user can force this reset at any time, but I 
+    -- also want this to happen automatically when the FPGA is initialized. To do this, wait until
+    -- SOME TIME after the main MCMM locks, then momentarily pulse the front end reset line.
 
     fe_reset <= '1' when (std_match(rx_addr,RESETFE_ADDR) and rx_wren='1') else '0';
 
@@ -341,8 +344,19 @@ begin
     fe_rst_proc: process(mclk)
     begin
         if rising_edge(mclk) then
-            if (locked='0' or fe_reset='1') then
+
+            if (locked='0') then
+                reset_counter <= X"00";
+            else
+                if (reset_counter /= X"FF") then
+                    reset_counter <= std_logic_vector(unsigned(reset_counter)+1);
+                end if;
+            end if;
+            
+            if (fe_reset='1') then
                 fe_reset_mclk <= '1';
+            elsif (reset_counter=X"FD" or reset_counter=X"FE") then
+                fe_reset_mclk <= '1';                
             else
                 fe_reset_mclk <= '0';
             end if;
