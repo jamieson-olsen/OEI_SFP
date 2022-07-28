@@ -18,11 +18,15 @@ set_clock_groups -name async_groups -asynchronous \
 -group [get_clocks -include_generated_clocks oeiclk] \
 
 # tell vivado about places where signals cross clock domains so timing can be ignored here...
-# comment out and worry about this later...
 
-# set_false_path -from {bc_count_reg_reg[*]/C} -to {eth_int_inst/data_manager_blk/TX_CTRL_FIFO/FIFO_SYNC_MACRO_inst/bl.fifo_36_inst_bl_1.fifo_36_bl_1/DI[*]}
-# set_false_path -from {eth_int_inst/*/*/tx_en_reg*/C} -to {eth_act_led_reg_reg[0]/D}
-# set_false_path -from {*/*/*/gig_ethernet_pcs_pma_0_core/gpcs_pma_inst/RECEIVER/RX_DV_reg/C} -to {eth_act_led_reg_reg[0]/D}
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/done_reg_reg/C]      -to [get_pins tx_data_reg_reg[*]/D]
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/warn_reg_reg/C]      -to [get_pins tx_data_reg_reg[*]/D]
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/errcnt_reg_reg[*]/C] -to [get_pins tx_data_reg_reg[*]/D]
+
+# define multicycle path to get through the rx_addr decoding and big combinatorial mux
+
+# set_multicycle_path 2 -setup -from [get_pins rx_addr_reg_reg[*]/C] -to [get_pins tx_data_reg_reg[*]/D]
+set_multicycle_path 2 -setup -to [get_pins tx_data_reg_reg[*]/D]
 
 # #############################################################################
 # Pin LOCation and IOSTANDARD Constraints...
