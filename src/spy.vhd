@@ -78,9 +78,9 @@ begin
         if rising_edge(clka) then
 
             if (reset='1') then
-                dia_reg  <= X"0000";
+                --dia_reg  <= X"0000";
                 we_reg   <= "0";
-                addr_reg <= X"000";
+                --addr_reg <= X"000";
                 state    <= rst;
             else
                 dia_reg <= dia_delayed;

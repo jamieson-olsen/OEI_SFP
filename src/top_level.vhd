@@ -174,12 +174,12 @@ architecture top_level_arch of top_level is
     signal gmii_rx_dv, gmii_rx_er: std_logic;
     signal status_vector: std_logic_vector(15 downto 0);
 
-    signal tx_data, tx_data_reg, rx_data: std_logic_vector(63 downto 0);
+    signal tx_data, rx_data: std_logic_vector(63 downto 0);
     signal rx_addr, rx_addr_reg: std_logic_vector(31 downto 0);
     signal tx_rden, rx_wren: std_logic;
 
-    type wstate_type is (rst, wait4read, wait0, wait1, wait2);
-    signal wstate: wstate_type;
+    --type wstate_type is (rst, wait4read, wait0, wait1, wait2);
+    --signal wstate: wstate_type;
 
     signal test_reg: std_logic_vector(63 downto 0);
     signal testreg_we: std_logic;
@@ -488,7 +488,7 @@ begin
     eth_int_inst: ethernet_interface
     port map(
         reset_in       => reset_async, 
-        tx_data        => tx_data_reg, -- big mux output register
+        tx_data        => tx_data, 
         ready          => ready,
         b_data         => X"0000000000000000",  -- burst mode not used
         b_data_we      => '0',
@@ -595,52 +595,52 @@ begin
                (X"00000000000000" & errcnt(3)) when std_match(rx_addr_reg, AFE3_ERRCNT_ADDR) else
                (X"00000000000000" & errcnt(4)) when std_match(rx_addr_reg, AFE4_ERRCNT_ADDR) else
 
-               (X"00000000" & rx_addr);
+               (others=>'0');
 
     -- register the mux outputput. define a 2 cycle multicycle path between (rx_addr_reg, blockrams, fifos) and this register
     -- to allow more time to get through the big mux and routing.
 
-    muxout_proc: process(oeiclk)
-    begin
-        if rising_edge(oeiclk) then
-            tx_data_reg <= tx_data;
-        end if;
-    end process muxout_proc;
+--    muxout_proc: process(oeiclk)
+--    begin
+--        if rising_edge(oeiclk) then
+--            tx_data_reg <= tx_data;
+--        end if;
+--    end process muxout_proc;
 
     -- ready is used to implement wait states to the OEI R/W bus. For writes ready is asserted immediately, meaning that
     -- block writes can happen on every clock cycle. For reads we need more time to get through the mess of blockrams
     -- and the big mux, so here ready gets delayed by 2 clocks. 
 
-    wsfsm_proc: process(oeiclk)
-    begin
-        if rising_edge(oeiclk) then
-            if (reset_async='1') then
-                wstate <= rst;
-            else
-                case (wstate) is 
-                    when rst =>
-                        wstate <= wait4read;
-                    when wait4read =>
-                        if (tx_rden='1') then
-                            wstate <= wait0;
-                        else
-                            wstate <= wait4read;
-                        end if;
-                    when wait0 =>
-                        wstate <= wait1;
-                    when wait1 =>
-                        wstate <= wait2;
-                    when wait2 => -- assert ready in this state only                  
-                        wstate <= wait4read;
-                    when others =>
-                        wstate <= rst;
-                end case;
-            end if;
-        end if;
-    end process wsfsm_proc;
+--    wsfsm_proc: process(oeiclk)
+--    begin
+--        if rising_edge(oeiclk) then
+--            if (reset_async='1') then
+--                wstate <= rst;
+--            else
+--                case (wstate) is 
+--                    when rst =>
+--                        wstate <= wait4read;
+--                    when wait4read =>
+--                        if (tx_rden='1') then
+--                            wstate <= wait0;
+--                        else
+--                            wstate <= wait4read;
+--                        end if;
+--                    when wait0 =>
+--                        wstate <= wait1;
+--                    when wait1 =>
+--                        wstate <= wait2;
+--                    when wait2 => -- assert ready in this state only                  
+--                        wstate <= wait4read;
+--                    when others =>
+--                        wstate <= rst;
+--                end case;
+--            end if;
+--        end if;
+--    end process wsfsm_proc;
 
-    ready <= '1' when (rx_wren='1') else  -- no wait states for writes 
-             '1' when (wstate = wait2) else 
+    ready <= '1' when (rx_wren='1') else  -- no wait for writes 
+             '1' when (tx_rden='1') else  -- no wait for reads
              '0';
 
     -- 64-bit R/W dummy register for testing reads and writes

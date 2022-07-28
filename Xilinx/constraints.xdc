@@ -1,32 +1,38 @@
-# DAPHNE constraints
-# jamieson@fnal.gov
-# 15 Feb 2022
+# DAPHNE GBE OEI version constraints
+# Jamieson Olsen <jamieson@fnal.gov>
 
 # #############################################################################
 # Timing constraints...
 # Note: Xilinx IP core constraints will be applied automatically
 # when the *.xcix file is added to the project
 
-# Net sysclk is 100MHz clock, comes in on differential I/O
-# Net oeiclk is 125MHz and is generated from the GTX transceiver, which it gets from the reference clock
+create_clock -name sysclk   -period 10.000  [get_ports sysclk_p]
+create_generated_clock -name sclk [get_pins mmcm_inst/CLKOUT0]
+create_generated_clock -name mclk [get_pins mmcm_inst/CLKOUT1]
+create_generated_clock -name fclk [get_pins mmcm_inst/CLKOUT2]
 
-create_clock -name sysclk -period 10.000  [get_ports sysclk_p]
-create_clock -name oeiclk -period 8.000   [get_ports gtrefclk_p]
+create_clock -name gtrefclk -period 8.000 [get_ports gtrefclk_p]
+create_generated_clock -name oeiclk [get_pins phy_inst/U0/core_clocking_i/mmcm_adv_inst/CLKOUT0]
+create_generated_clock -name oeihclk [get_pins phy_inst/U0/core_clocking_i/mmcm_adv_inst/CLKOUT1]
 
 set_clock_groups -name async_groups -asynchronous \
--group [get_clocks -include_generated_clocks sysclk] \
--group [get_clocks -include_generated_clocks oeiclk] \
+-group {sclk} \
+-group {mclk fclk} \
+-group {oeiclk oeihclk}
 
 # tell vivado about places where signals cross clock domains so timing can be ignored here...
 
-set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/done_reg_reg/C]      -to [get_pins tx_data_reg_reg[*]/D]
-set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/warn_reg_reg/C]      -to [get_pins tx_data_reg_reg[*]/D]
-set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/errcnt_reg_reg[*]/C] -to [get_pins tx_data_reg_reg[*]/D]
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/done_reg_reg/C]      
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/warn_reg_reg/C]      
+set_false_path -from [get_pins fe_inst/gen_afe[*].afe_inst/auto_fsm_inst/errcnt_reg_reg[*]/C] 
+set_false_path -from [get_pins trig_gbe*_reg_reg/C] -to [get_pins trig_sync_reg/D]
+set_false_path -to [get_pins led0_reg_reg[*]/C]
+set_false_path -from [get_pins test_reg_reg[*]/C]
 
 # define multicycle path to get through the rx_addr decoding and big combinatorial mux
 
 # set_multicycle_path 2 -setup -from [get_pins rx_addr_reg_reg[*]/C] -to [get_pins tx_data_reg_reg[*]/D]
-set_multicycle_path 2 -setup -to [get_pins tx_data_reg_reg[*]/D]
+# set_multicycle_path 2 -setup -to [get_pins tx_data_reg_reg[*]/D]
 
 # #############################################################################
 # Pin LOCation and IOSTANDARD Constraints...

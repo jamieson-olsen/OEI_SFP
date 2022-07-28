@@ -85,7 +85,7 @@ report_utilization -file $outputDir/post_synth_util.rpt
 # place...
 
 opt_design
-place_design 
+place_design -directive WLDrivenBlockPlacement
 phys_opt_design -directive AggressiveFanoutOpt
 # write_checkpoint -force $outputDir/post_place
 report_timing_summary -file $outputDir/post_place_timing_summary.rpt
@@ -93,7 +93,7 @@ report_timing -sort_by group -max_paths 100 -path_type summary -file $outputDir/
 
 # route...
 
-route_design 
+route_design -directive HigherDelayCost
 # write_checkpoint -force $outputDir/post_route
 
 # generate reports...
